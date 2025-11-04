@@ -10,6 +10,9 @@
 static bool migrating = false;
 static unsigned active_machines = 16;
 
+// Index for round-robin
+static unsigned rr_index = 0;
+
 static Priority_t assign_sla_priority(SLAType_t s)
 {
    switch (s)
@@ -77,14 +80,18 @@ void Scheduler::NewTask(Time_t now, TaskId_t task_id) {
     // Turn on a machine, migrate an existing VM from a loaded machine....
     //
     // Other possibilities as desired
-    Priority_t priority = (task_id == 0 || task_id == 64)? HIGH_PRIORITY : MID_PRIORITY;
-    if(migrating) {
-        VM_AddTask(vms[0], task_id, priority);
-    }
-    else {
-        VM_AddTask(vms[task_id % active_machines], task_id, priority);
-    }// Skeleton code, you need to change it according to your algorithm
+
+    TaskInfo_t t = GetTaskInfo(task_id);
+    Priority_t priority = assign_sla_priority(t.required_sla);
+
+    // each new task goes to the next VM in a circular fashion
+    VMId_t vm = vms[rr_index];
+    VM_AddTask(vm, task_id, priority);
+
+    // move the round-robin pointer
+    rr_index = (rr_index + 1) % active_machines;
 }
+
 
 void Scheduler::PeriodicCheck(Time_t now) {
     // This method should be called from SchedulerCheck()
@@ -144,15 +151,9 @@ void MigrationDone(Time_t time, VMId_t vm_id) {
 }
 
 void SchedulerCheck(Time_t time) {
-    // This function is called periodically by the simulator, no specific event
+    // This function is called periodically by the simulator.
     SimOutput("SchedulerCheck(): SchedulerCheck() called at " + to_string(time), 4);
     Scheduler.PeriodicCheck(time);
-    static unsigned counts = 0;
-    counts++;
-    if(counts == 10) {
-        migrating = true;
-        VM_Migrate(1, 9);
-    }
 }
 
 void SimulationComplete(Time_t time) {
