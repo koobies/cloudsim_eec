@@ -22,7 +22,7 @@ static double machine_energy_score(const MachineInfo_t &mi)
 static std::vector<VMId_t> g_vms;
 static std::vector<MachineId_t> g_machines;
 
-static Priority_t prio_for_sla(SLAType_t s)
+static Priority_t assign_sla_priority(SLAType_t s)
 {
     switch (s)
     {
@@ -166,7 +166,7 @@ void Scheduler::NewTask(Time_t now, TaskId_t task_id)
     // 3) set host to P0 if SLA0 or SLA1
 
     TaskInfo_t t = GetTaskInfo(task_id);
-    Priority_t priority = prio_for_sla(t.required_sla);
+    Priority_t priority = assign_sla_priority(t.required_sla);
 
     // pMapper placement:
     // - machines[] is already sorted by energy score (Init did that)
