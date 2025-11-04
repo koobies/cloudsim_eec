@@ -59,32 +59,56 @@ void Scheduler::MigrationComplete(Time_t time, VMId_t vm_id) {
     // Update your data structure. The VM now can receive new tasks
 }
 
-void Scheduler::NewTask(Time_t now, TaskId_t task_id) {
-    // Get the task parameters
-    //  IsGPUCapable(task_id);
-    //  GetMemory(task_id);
-    //  RequiredVMType(task_id);
-    //  RequiredSLA(task_id);
-    //  RequiredCPUType(task_id);
-    // Decide to attach the task to an existing VM, 
-    //      vm.AddTask(taskid, Priority_T priority); or
-    // Create a new VM, attach the VM to a machine
-    //      VM vm(type of the VM)
-    //      vm.Attach(machine_id);
-    //      vm.AddTask(taskid, Priority_t priority) or
-    // Turn on a machine, create a new VM, attach it to the VM, then add the task
-    //
-    // Turn on a machine, migrate an existing VM from a loaded machine....
-    //
-    // Other possibilities as desired
-    Priority_t priority = (task_id == 0 || task_id == 64)? HIGH_PRIORITY : MID_PRIORITY;
-    if(migrating) {
-        VM_AddTask(vms[0], task_id, priority);
+void Scheduler::NewTask(Time_t now, TaskId_t task_id)
+{
+    TaskInfo_t t = GetTaskInfo(task_id);
+
+    // Map SLA to priority: SLA0 > SLA1 > others
+    Priority_t priority = prio_for_sla(t.required_sla);
+
+    bool found = false;
+    unsigned best_index = 0;
+    double best_score = 1e30;  
+
+    for (unsigned i = 0; i < active_machines; ++i)
+    {
+        MachineId_t m  = machines[i];
+        MachineInfo_t mi = Machine_GetInfo(m);
+
+        if (mi.cpu != t.required_cpu)
+            continue;
+
+        if (!(mi.s_state == S0 || mi.s_state == S0i1))
+            continue;
+
+        // Memory check: VM overhead + task memory
+        unsigned need = VM_MEMORY_OVERHEAD + t.required_memory;
+        if (mi.memory_size < mi.memory_used + need)
+            continue;
+
+        // Load metric: tasks per core (lower is better)
+        double tasks_per_core =
+            mi.num_cpus ? double(mi.active_tasks) / double(mi.num_cpus)
+                        : double(mi.active_tasks);
+
+        if (tasks_per_core < best_score)
+        {
+            best_score = tasks_per_core;
+            best_index = i;
+            found = true;
+        }
     }
-    else {
-        VM_AddTask(vms[task_id % active_machines], task_id, priority);
-    }// Skeleton code, you need to change it according to your algorithm
+
+    if (!found)
+    {
+        best_index = task_id % active_machines;
+    }
+
+    VMId_t vm = vms[best_index];
+
+    VM_AddTask(vm, task_id, priority);
 }
+
 
 void Scheduler::PeriodicCheck(Time_t now) {
     // This method should be called from SchedulerCheck()
@@ -143,17 +167,12 @@ void MigrationDone(Time_t time, VMId_t vm_id) {
     migrating = false;
 }
 
-void SchedulerCheck(Time_t time) {
-    // This function is called periodically by the simulator, no specific event
+void SchedulerCheck(Time_t time)
+{
     SimOutput("SchedulerCheck(): SchedulerCheck() called at " + to_string(time), 4);
     Scheduler.PeriodicCheck(time);
-    static unsigned counts = 0;
-    counts++;
-    if(counts == 10) {
-        migrating = true;
-        VM_Migrate(1, 9);
-    }
 }
+
 
 void SimulationComplete(Time_t time) {
     // This function is called before the simulation terminates Add whatever you feel like.
