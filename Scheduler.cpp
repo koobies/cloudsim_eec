@@ -351,44 +351,7 @@ void SimulationComplete(Time_t time)
 
 void SLAWarning(Time_t time, TaskId_t task_id)
 {
-   // Performance-first SLA handler:
-   // Find the machine running this task and boost its P-state to P0 (max speed).
-
-   if (g_vms.empty() || g_machines.empty())
-       return;
-
-   // Find which VM currently hosts the task
-   unsigned host_idx = (unsigned)~0u;
-   for (unsigned i = 0; i < g_vms.size(); ++i)
-   {
-       VMInfo_t vi = VM_GetInfo(g_vms[i]);
-       for (auto tid : vi.active_tasks)
-       {
-           if (tid == task_id)
-           {
-               host_idx = i;
-               break;
-           }
-       }
-       if (host_idx != (unsigned)~0u)
-           break;
-   }
-   if (host_idx == (unsigned)~0u)
-       return;
-
-   // Get the correct host machine id
-   MachineId_t host = g_machines[host_idx];
-
-   // Boost all cores on this machine to highest performance
-   auto mi_host = Machine_GetInfo(host);
-   for (unsigned c = 0; c < mi_host.num_cpus; ++c)
-   {
-       Machine_SetCorePerformance(host, c, P0);
-   }
-
-   SetTaskPriority(task_id, HIGH_PRIORITY);
-
-   SimOutput("SLAWarning(): boosted machine " + std::to_string(host) + " to P0 for task " + std::to_string(task_id), 2);
+   
 }
 
 
