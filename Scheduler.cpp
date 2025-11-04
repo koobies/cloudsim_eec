@@ -10,6 +10,19 @@
 static bool migrating = false;
 static unsigned active_machines = 16;
 
+static Priority_t assign_sla_priority(SLAType_t s)
+{
+   switch (s)
+   {
+   case SLA0:
+       return HIGH_PRIORITY;
+   case SLA1:
+       return MID_PRIORITY;
+   default:
+       return LOW_PRIORITY;
+   }
+}
+
 void Scheduler::Init() {
     // Find the parameters of the clusters
     // Get the total number of machines
