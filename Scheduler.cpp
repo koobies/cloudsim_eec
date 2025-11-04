@@ -10,7 +10,7 @@
 static bool migrating = false;
 static unsigned active_machines = 16;
 
-static Priority_t prio_for_sla(SLAType_t s)
+static Priority_t assign_sla_priority(SLAType_t s)
 {
    switch (s)
    {
@@ -64,7 +64,7 @@ void Scheduler::NewTask(Time_t now, TaskId_t task_id)
     TaskInfo_t t = GetTaskInfo(task_id);
 
     // Map SLA to priority: SLA0 > SLA1 > others
-    Priority_t priority = prio_for_sla(t.required_sla);
+    Priority_t priority = assign_sla_priority(t.required_sla);
 
     bool found = false;
     unsigned best_index = 0;
