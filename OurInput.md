@@ -1,11 +1,3 @@
-# Heterogeneous, stressful test input for comparing Round Robin vs Greedy
-# - First 16 machines are X86 and used by your Scheduler::Init()
-# - 8 "slow" X86 nodes (few cores, low MIPS)
-# - 8 "fast" X86 nodes (many cores, high MIPS)
-# - Heavy SLA0 + SLA1 load and frequent SLA2 tasks
-
-
-# 8 slow X86 machines (IDs 0..7)
 machine class:
 {
    Number of machines: 8
@@ -20,7 +12,6 @@ machine class:
 }
 
 
-# 8 fast X86 machines (IDs 8..15)
 machine class:
 {
    Number of machines: 8
@@ -33,11 +24,6 @@ machine class:
    MIPS: [2000, 1500, 1200, 800] 
    GPUs: no
 }
-
-
-# (Optional) extra machines beyond ID 15 – your current Init() ignores these,
-# but they show that the cluster COULD be larger without affecting 0..15.
-
 
 machine class:
 {
@@ -52,11 +38,6 @@ machine class:
    GPUs: no
 }
 
-
-# --------------- Task classes (stressful load) ---------------
-
-
-# SLA0: strict, heavy tasks – long runtime, fairly fast arrivals
 task class:
 {
    Start time: 60000
@@ -72,8 +53,6 @@ task class:
    Seed: 530001
 }
 
-
-# SLA1: also heavy, slightly less strict
 task class:
 {
    Start time: 60000
@@ -89,8 +68,6 @@ task class:
    Seed: 530002
 }
 
-
-# SLA2: many lighter web-like tasks – add background pressure
 task class:
 {
    Start time: 60000
