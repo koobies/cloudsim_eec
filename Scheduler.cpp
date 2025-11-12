@@ -2,7 +2,7 @@
 //  Scheduler.cpp
 //  CloudSim
 //
-//  Greedy scheduler with VM migration for load balancing
+//  Created by ELMOOTAZBELLAH ELNOZAHY on 10/20/24.
 //
 
 #include "Scheduler.hpp"
