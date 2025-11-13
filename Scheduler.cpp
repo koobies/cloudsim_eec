@@ -30,6 +30,46 @@ static Priority_t prio_for_sla(SLAType_t s)
     }
 }
 
+// Set P-state based on machine load
+static void set_pstate_by_load(MachineId_t m)
+{
+    MachineInfo_t mi = Machine_GetInfo(m);
+    
+    // Calculate per-core load
+    double tasks_per_core = mi.num_cpus ? 
+        double(mi.active_tasks) / double(mi.num_cpus) : 0.0;
+    
+    CPUPerformance_t new_pstate;
+    
+    // DVFS policy: Scale frequency based on load
+    if (tasks_per_core > 1.5)
+    {
+        // High load: Run at full speed (P0)
+        new_pstate = P0;
+    }
+    else if (tasks_per_core > 0.8)
+    {
+        // Medium-high load: Run at 3/4 speed (P1)
+        new_pstate = P1;
+    }
+    else if (tasks_per_core > 0.3)
+    {
+        // Medium load: Run at 1/2 speed (P2)
+        new_pstate = P2;
+    }
+    else
+    {
+        // Low load: Run at 1/4 speed (P3)
+        new_pstate = P3;
+    }
+    
+    // Set all cores to the same P-state
+    for (unsigned c = 0; c < mi.num_cpus; ++c)
+    {
+        Machine_SetCorePerformance(m, c, new_pstate);
+    }
+}
+
 void Scheduler::Init()
 {
     SimOutput("Scheduler::Init(): Total number of machines is " +
@@ -192,6 +232,9 @@ void Scheduler::NewTask(Time_t now, TaskId_t task_id)
                   " on machine " + to_string(machines[best_index]) +
                   " with priority " + to_string(priority),
               3);
+    
+    // Apply DVFS based on the updated machine load
+    set_pstate_by_load(machines[best_index]);
 }
 
 void Scheduler::PeriodicCheck(Time_t now)
@@ -200,6 +243,18 @@ void Scheduler::PeriodicCheck(Time_t now)
     unsigned active_machines = machines.size();
     if (active_machines == 0)
         return;
+
+    // Apply DVFS to all machines based on their current load
+    for (unsigned i = 0; i < active_machines; ++i)
+    {
+        MachineId_t m = machines[i];
+        MachineInfo_t mi = Machine_GetInfo(m);
+        
+        if (!(mi.s_state == S0 || mi.s_state == S0i1))
+            continue;
+        
+        set_pstate_by_load(m);
+    }
 
     // Only one migration at a time
     if (migrating)
