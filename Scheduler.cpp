@@ -70,29 +70,34 @@ void Scheduler::Init()
    //      Get the number of CPUs
    //      Get if there is a GPU or not
    //
-   SimOutput("Scheduler::Init(): Total number of machines is " + to_string(Machine_GetTotal()), 3);
+   unsigned total = Machine_GetTotal();
+   SimOutput("Scheduler::Init(): Total number of machines is " + to_string(total), 3);
    SimOutput("Scheduler::Init(): Initializing scheduler", 1);
-   for (unsigned i = 0; i < active_machines; i++)
-       vms.push_back(VM_Create(LINUX, X86));
-   for (unsigned i = 0; i < active_machines; i++)
+   
+   // Create VMs for all machines, matching their CPU types
+   for (unsigned i = 0; i < total; i++)
    {
-       machines.push_back(MachineId_t(i));
-   }
-   for (unsigned i = 0; i < active_machines; i++)
-   {
-       VM_Attach(vms[i], machines[i]);
+       MachineId_t mid = MachineId_t(i);
+       MachineInfo_t mi = Machine_GetInfo(mid);
+       
+       // Turn on the machine
+       Machine_SetState(mid, S0);
+       
+       // Create a LINUX VM with the machine's CPU type
+       VMId_t vm = VM_Create(LINUX, mi.cpu);
+       VM_Attach(vm, mid);
+       
+       vms.push_back(vm);
+       machines.push_back(mid);
    }
 
-
+   active_machines = total;
+   
    bool dynamic = false;
    if (dynamic)
        for (unsigned i = 0; i < 4; i++)
            for (unsigned j = 0; j < 8; j++)
                Machine_SetCorePerformance(MachineId_t(0), j, P3);
-   // Turn off the ARM machines
-   for (unsigned i = 24; i < Machine_GetTotal(); i++)
-       Machine_SetState(MachineId_t(i), S5);
-
 
    g_vms = vms;
    g_machines = machines;
