@@ -58,6 +58,46 @@ static void set_machine_pstate(MachineId_t m, CPUPerformance_t p)
     }
 }
 
+// Set P-state based on machine load and SLA requirements
+static void set_pstate_by_load(MachineId_t m)
+{
+    MachineInfo_t mi = Machine_GetInfo(m);
+    
+    // Check if machine has any SLA0/SLA1 tasks
+    bool strict = false;
+    for (unsigned i = 0; i < g_vms.size(); ++i)
+    {
+        if (g_machines[i] == m && machine_has_strict_sla(m, g_vms[i]))
+        {
+            strict = true;
+            break;
+        }
+    }
+    
+    CPUPerformance_t new_pstate;
+    
+    if (strict)
+    {
+        // SLA0/SLA1 tasks present: keep at P0
+        new_pstate = P0;
+    }
+    else
+    {
+        // Scale based on load
+        double tasks_per_core = mi.num_cpus ? 
+            double(mi.active_tasks) / double(mi.num_cpus) : 0.0;
+        
+        if (tasks_per_core > 0.8)
+            new_pstate = P0;
+        else if (tasks_per_core > 0.3)
+            new_pstate = P1;
+        else
+            new_pstate = P2;
+    }
+    
+    set_machine_pstate(m, new_pstate);
+}
+
 static bool migrating = false;
 static unsigned active_machines = 16;
 
@@ -220,19 +260,15 @@ void Scheduler::NewTask(Time_t now, TaskId_t task_id)
     VMId_t vm = vms[best_index];
     VM_AddTask(vm, task_id, priority);
 
-    // Optionally: if strict SLA, boost this machine to P0 for performance
-    if (t.required_sla == SLA0 || t.required_sla == SLA1)
-    {
-        set_machine_pstate(chosen, P0);
-    }
+    // Apply DVFS based on the updated machine load
+    set_pstate_by_load(chosen);
 }
 
 
 void Scheduler::PeriodicCheck(Time_t now)
 {
     // Performance-first DVFS policy:
-    // - If machine has any SLA0/1 tasks, keep P0
-    // - Else if busy, P1; else P2
+    // - Apply load-based frequency scaling to all machines
 
     for (unsigned i = 0; i < active_machines; ++i)
     {
@@ -241,22 +277,8 @@ void Scheduler::PeriodicCheck(Time_t now)
         if (!(mi.s_state == S0 || mi.s_state == S0i1))
             continue;
 
-        // Check strict SLA presence on our single VM per machine
-        bool strict = machine_has_strict_sla(m, vms[i]);
-        if (strict)
-        {
-            set_machine_pstate(m, P0);
-            continue;
-        }
-
-        // no strict SLA tasks; scale by load
-        double tasks_per_core = mi.num_cpus ? double(mi.active_tasks) / double(mi.num_cpus) : 0.0;
-        if (tasks_per_core > 0.8)
-            set_machine_pstate(m, P0);
-        else if (tasks_per_core > 0.3)
-            set_machine_pstate(m, P1);
-        else
-            set_machine_pstate(m, P2);
+        // Apply DVFS based on SLA presence and load
+        set_pstate_by_load(m);
     }
 }
 
