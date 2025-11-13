@@ -90,23 +90,15 @@ void Scheduler::Init()
         MachineId_t mid = MachineId_t(i);
         MachineInfo_t mi = Machine_GetInfo(mid);
 
-        if (mi.cpu == X86)
-        {
-            // turn X86 machines on (S0) for now
-            Machine_SetState(mid, S0);
+        // Turn on all machines and create VMs for any CPU type
+        Machine_SetState(mid, S0);
 
-            // create a LINUX/X86 VM and attach
-            VMId_t vm = VM_Create(LINUX, X86);
-            VM_Attach(vm, mid);
+        // Create a LINUX VM for the machine's CPU type
+        VMId_t vm = VM_Create(LINUX, mi.cpu);
+        VM_Attach(vm, mid);
 
-            double score = machine_energy_score(mi);
-            entries.push_back({mid, vm, score});
-        }
-        else
-        {
-            // turn off non-X86 machines (ARM cluster)
-            Machine_SetState(mid, S5);
-        }
+        double score = machine_energy_score(mi);
+        entries.push_back({mid, vm, score});
     }
 
     // pMapper: sort machines by energy consumption (lowest to highest)
