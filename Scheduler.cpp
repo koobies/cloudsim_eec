@@ -42,35 +42,28 @@ void Scheduler::Init()
 
     unsigned total = Machine_GetTotal();
 
-    // Greedy pseudo:
-    // For every X86 machine, power on, create one LINUX VM, then attach it
-    // For all non-X86 machines, power them down (S5)
+    // Create VMs for all CPU types, power them on
+    // For every machine, power on and create one LINUX VM matching its CPU type
     for (unsigned i = 0; i < total; ++i)
     {
         MachineId_t mid = MachineId_t(i);
         MachineInfo_t mi = Machine_GetInfo(mid);
 
-        if (mi.cpu == X86)
-        {
-            Machine_SetState(mid, S0); 
+        // Turn on all machines
+        Machine_SetState(mid, S0); 
 
-            VMId_t vm = VM_Create(LINUX, X86);
-            VM_Attach(vm, mid);
+        // Create a LINUX VM with the machine's CPU type
+        VMId_t vm = VM_Create(LINUX, mi.cpu);
+        VM_Attach(vm, mid);
 
-            vms.push_back(vm);
-            machines.push_back(mid);
-        }
-        else
-        {
-            // ignore non-X86
-            Machine_SetState(mid, S5);
-        }
+        vms.push_back(vm);
+        machines.push_back(mid);
     }
 
     if (!vms.empty())
     {
         SimOutput("Scheduler::Init(): Created " + to_string(vms.size()) +
-                      " X86 VMs for greedy scheduler",
+                      " VMs for greedy scheduler (all CPU types)",
                   2);
     }
 }
