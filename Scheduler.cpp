@@ -367,4 +367,3 @@ void StateChangeComplete(Time_t time, MachineId_t machine_id)
 }
 
 
-
