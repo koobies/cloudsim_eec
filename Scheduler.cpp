@@ -173,7 +173,7 @@ void Scheduler::NewTask(Time_t now, TaskId_t task_id)
             mi.memory_size ? double(mi.memory_used + need_mem) / double(mi.memory_size)
                            : 0.0;
 
-        // Apply some hard limits to avoid overload
+       
         if (mem_fill > 0.90) // don't exceed 90% memory
             continue;
         if (tasks_per_core > 2.) // at most 2 tasks per core
@@ -216,7 +216,6 @@ void Scheduler::NewTask(Time_t now, TaskId_t task_id)
         }
     }
 
-    // Final fallback is to just drop it on index 0 if it's not migrating
     if (best_index < 0)
     {
         if (migrating && migrating_vm_index == 0 && active_machines > 1)
